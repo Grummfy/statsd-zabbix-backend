@@ -9,7 +9,6 @@ const hostname = require('os').hostname();
 const config = {
   flushInterval: 1,
 };
-const ee = new events.EventEmitter();
 
 
 describe('decode stat -> {host, key}', () => {
@@ -98,13 +97,15 @@ describe('metrics to items', () => {
 // TODO: improve tests
 describe('plugin works', () => {
   it('can run init', () => {
-    zabbix.init(0, config, ee, logger);
+    const emitter = new events.EventEmitter();
+    zabbix.init(0, config, emitter, logger);
   });
 
   it('can flush stats', () => {
     logger.log = sinon.spy();
-    zabbix.init(0, config, ee, logger);
-    ee.emit('flush', 0, {
+    const emitter = new events.EventEmitter();
+    zabbix.init(0, config, emitter, logger);
+    emitter.emit('flush', 0, {
       counters: {},
       timers: {},
       gauges: {},
@@ -116,8 +117,9 @@ describe('plugin works', () => {
 
   it('can write status', () => {
     const spy = sinon.spy();
-    zabbix.init(0, config, ee, logger);
-    ee.emit('status', spy);
+    const emitter = new events.EventEmitter();
+    zabbix.init(0, config, emitter, logger);
+    emitter.emit('status', spy);
     sinon.assert.called(spy);
   });
 });
