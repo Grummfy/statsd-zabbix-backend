@@ -7,7 +7,7 @@ const zabbix = require('../lib/zabbix');
 const config = {
   flushInterval: 1,
   zabbixDiscoveryKey: '#AUTO_DISCOVERY_METRIC#',
-  zabbixFilters: ['../lib/sample_zabbix_discovery_filter'],
+  zabbixFilters: ['../lib/zabbix-autodiscovery-publisher'],
 };
 
 describe('filtering works', () => {
