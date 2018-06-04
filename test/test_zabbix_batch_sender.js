@@ -103,7 +103,7 @@ describe('zabbix batch sender', () => {
       });
     }
     return batch;
-  };  
+  };
 
   it('send in one chunk', () => {
     const zabbixSender = senderFactory();

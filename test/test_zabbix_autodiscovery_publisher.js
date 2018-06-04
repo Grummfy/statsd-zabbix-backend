@@ -76,7 +76,7 @@ describe('zabbix autodiscovery publisher works', () => {
     instance.publishBatch = (batch, callback) => {
       let count = 0;
       if (batch) {
-        batch.forEach(item => {
+        batch.forEach((item) => {
           instance.items.push(item);
           count += 1;
         });
@@ -100,11 +100,12 @@ describe('zabbix autodiscovery publisher works', () => {
       }
     };
     return instance;
-  }
+  };
 
   it('publisher can init', () => {
     logger.log = sinon.spy();
     const publisher = publisherFactory(config, logger);
+    assert.notEqual(publisher, null);
   });
 
   it('publisher emits discovery item for short batch', () => {
@@ -142,5 +143,4 @@ describe('zabbix autodiscovery publisher works', () => {
     assert.equal(batchSender3.items.length, 6, 'third time items and publish stats');
   });
 });
-
 
