@@ -10,8 +10,12 @@ const config = {
   zabbixDiscoveryKey: '#AUTO_DISCOVERY_METRIC#',
   zabbixPublisher: '../lib/zabbix-autodiscovery-publisher',
   zabbixMaxDiscoveryBatchSize: 4,
-  zabbixReportPublishStats: true,
+  zabbixReportPublishStats: false,
 };
+
+const pubStatsConfig = Object.assign({}, config, {
+  zabbixReportPublishStats: true,
+});
 
 describe('zabbix backend works', () => {
   it('zabbix backend can load publisher', () => {
@@ -72,6 +76,7 @@ describe('zabbix autodiscovery publisher works', () => {
     const instance = {
       items: [],
       addFailed: 0,
+      publishCount: 0,
     };
     instance.publishBatch = (batch, callback) => {
       let count = 0;
@@ -87,6 +92,7 @@ describe('zabbix autodiscovery publisher works', () => {
         total: count,
         secondsSpend: 0.1,
       });
+      instance.publishCount += 1;
     };
 
     instance.complete = (callback) => {
@@ -126,6 +132,19 @@ describe('zabbix autodiscovery publisher works', () => {
     assert.equal(batchSender.items.length, 8);
   });
 
+  it('publisher emits discovery item for each item in case of discovery failure', () => {
+    logger.log = sinon.spy();
+    const items1 = createBatch(4);
+    const items2 = items1.slice();
+    const batchSender1 = createBatchSender();
+    const batchSender2 = createBatchSender();
+    const publisher = publisherFactory(config, logger);
+    batchSender1.addFailed = 1;
+    publisher(items1, batchSender1);
+    publisher(items2, batchSender2);
+    assert.equal(batchSender2.publishCount, 5);
+  });
+
   it('publisher emits publish stats items', () => {
     logger.log = sinon.spy();
     const items1 = createBatch(2);
@@ -134,7 +153,7 @@ describe('zabbix autodiscovery publisher works', () => {
     const batchSender1 = createBatchSender();
     const batchSender2 = createBatchSender();
     const batchSender3 = createBatchSender();
-    const publisher = publisherFactory(config, logger);
+    const publisher = publisherFactory(pubStatsConfig, logger);
     publisher(items1, batchSender1);
     publisher(items2, batchSender2);
     publisher(items3, batchSender3);
