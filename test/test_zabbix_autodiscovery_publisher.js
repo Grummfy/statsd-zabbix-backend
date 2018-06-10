@@ -11,6 +11,8 @@ const config = {
   zabbixPublisher: '../lib/zabbix-autodiscovery-publisher',
   zabbixMaxDiscoveryBatchSize: 4,
   zabbixReportPublishStats: false,
+  zabbixItemKeyPrefix: 'stats.["',
+  zabbixItemKeySuffix: '"]',
 };
 
 const pubStatsConfig = Object.assign({}, config, {
