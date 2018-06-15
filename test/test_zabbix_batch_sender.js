@@ -140,20 +140,24 @@ describe('zabbix batch sender', () => {
     const zabbixSender = senderFactory();
     const sender = new ZabbixBatchSender({ maxBatchSize: 100 }, zabbixSender);
     const batch = createBatch(50);
+    let callCount = 0;
     sender.publishBatch(batch, (status) => {
       assert.ok(status);
       assert.equal(status.processed, 50);
       assert.equal(zabbixSender.sendCount, 1);
+      callCount += 1;
     });
     sender.publishBatch(batch, (status) => {
       assert.ok(status);
       assert.equal(status.processed, 50);
       assert.equal(zabbixSender.sendCount, 2);
+      callCount += 1;
     });
     sender.complete((status) => {
       assert.ok(status);
       assert.equal(status.processed, 100);
       assert.equal(zabbixSender.sendCount, 2);
+      assert.equal(callCount, 2);
     });
   });
 });

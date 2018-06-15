@@ -7,6 +7,7 @@ const zabbix = require('../lib/zabbix');
 const hostname = require('os').hostname();
 
 const config = {
+  debug: true,
   flushInterval: 1,
 };
 

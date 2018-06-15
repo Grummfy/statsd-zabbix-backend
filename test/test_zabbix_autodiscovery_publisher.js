@@ -6,6 +6,7 @@ const zabbix = require('../lib/zabbix');
 const publisherFactory = require('../lib/zabbix-autodiscovery-publisher');
 
 const config = {
+  debug: true,
   flushInterval: 1,
   zabbixDiscoveryKey: '#AUTO_DISCOVERY_METRIC#',
   zabbixDiscoveryMode: 'simple',
