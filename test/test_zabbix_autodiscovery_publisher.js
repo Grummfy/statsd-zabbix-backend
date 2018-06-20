@@ -12,13 +12,15 @@ const config = {
   zabbixDiscoveryMode: 'simple',
   zabbixPublisher: '../lib/zabbix-autodiscovery-publisher',
   zabbixMaxDiscoveryBatchSize: 4,
-  zabbixReportPublishStats: false,
   zabbixItemKeyPrefix: 'stats.["',
   zabbixItemKeySuffix: '"]',
 };
 
 const pubStatsConfig = Object.assign({}, config, {
-  zabbixReportPublishStats: true,
+  zabbixPublishItems: {
+    discoveryStats: { enabled: true },
+    publishStats: { enabled: true },
+  },
 });
 
 describe('zabbix backend works', () => {

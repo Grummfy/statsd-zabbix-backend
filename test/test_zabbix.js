@@ -46,7 +46,7 @@ describe('static host, stat as key', () => {
 
 describe('metrics to items', () => {
   it('counters generate total and avg items', () => {
-    const items = zabbix.itemsForCounter(10000, 'test', 'key', 100);
+    const items = zabbix.itemsForCounter(null, 10000, 'test', 'key', 100);
     assert.equal(items.length, 2);
 
     const [total, avg] = items;
@@ -65,7 +65,7 @@ describe('metrics to items', () => {
       values.push(i);
     }
 
-    const items = zabbix.itemsForTimer(percentiles, 'test', 'key', values);
+    const items = zabbix.itemsForTimer(null, percentiles, 'test', 'key', values);
     assert.equal(items.length, numItems);
 
     const [lower, upper, count, mean95, upper95, mean99, upper99] = items;
@@ -86,7 +86,7 @@ describe('metrics to items', () => {
   });
 
   it('gauges generate a single item with current value', () => {
-    const items = zabbix.itemsForGauge('test', 'key', 100);
+    const items = zabbix.itemsForGauge(null, 'test', 'key', 100);
     assert.equal(items.length, 1);
 
     const [item] = items;
