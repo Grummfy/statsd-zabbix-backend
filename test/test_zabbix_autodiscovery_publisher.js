@@ -169,3 +169,170 @@ describe('zabbix autodiscovery publisher works', () => {
   });
 });
 
+describe('zabbix sender utils - metric key split', () => {
+  const state = {
+    discoverySegmentsSeparator: '.',
+    discoverySegmentsCount: 5,
+  };
+
+  it('splitMetricKey works for short keys', () => {
+    const key = 'root.short_key';
+    const result = publisherFactory.splitMetricKey(key, state);
+    assert.ok(result);
+    assert.equal(Object.keys(result).length, 5);
+    assert.equal(result['{#COMPONENT1}'], 'root');
+    assert.equal(result['{#COMPONENT2}'], 'short_key');
+    assert.equal(result['{#COMPONENT3}'], '');
+    assert.equal(result['{#COMPONENT4}'], '');
+    assert.equal(result['{#COMPONENT5}'], '');
+  });
+
+  it('splitMetricKey works for keys with configured number of segments', () => {
+    const key = 'seg1.seg2.seg3.seg4.seg5';
+    const result = publisherFactory.splitMetricKey(key, state);
+    assert.ok(result);
+    assert.equal(Object.keys(result).length, 5);
+    assert.equal(result['{#COMPONENT1}'], 'seg1');
+    assert.equal(result['{#COMPONENT2}'], 'seg2');
+    assert.equal(result['{#COMPONENT3}'], 'seg3');
+    assert.equal(result['{#COMPONENT4}'], 'seg4');
+    assert.equal(result['{#COMPONENT5}'], 'seg5');
+  });
+
+  it('splitMetricKey works for long keys', () => {
+    const key = 'root.seg1.seg2-comp.seg3.seg4.seg6.tail_key';
+    const result = publisherFactory.splitMetricKey(key, state);
+    assert.ok(result);
+    assert.equal(Object.keys(result).length, 5);
+    assert.equal(result['{#COMPONENT1}'], 'root');
+    assert.equal(result['{#COMPONENT2}'], 'seg1');
+    assert.equal(result['{#COMPONENT3}'], 'seg2-comp');
+    assert.equal(result['{#COMPONENT4}'], 'seg3');
+    assert.equal(result['{#COMPONENT5}'], 'seg4.seg6.tail_key');
+  });
+});
+
+describe('zabbix sender utils - zabbix key quote', () => {
+  it('quoteZabbixKey does nothing for empty key', () => {
+    const key = '';
+    const quotedKey = publisherFactory.quoteZabbixKey(key);
+    assert.equal(quotedKey, '');
+  });
+
+  it('quoteZabbixKey does nothing for simple key', () => {
+    const key = 'root.short_key';
+    const quotedKey = publisherFactory.quoteZabbixKey(key);
+    assert.equal(quotedKey, 'root.short_key');
+  });
+
+  it('quoteZabbixKey quotes if first item is opening square bracket', () => {
+    const key = '[root.short_key';
+    const quotedKey = publisherFactory.quoteZabbixKey(key);
+    assert.equal(quotedKey, '"[root.short_key"');
+  });
+
+  it('quoteZabbixKey does quotes if opening square bracket is in the middle', () => {
+    const key = 'ro[ot.short_key';
+    const quotedKey = publisherFactory.quoteZabbixKey(key);
+    assert.equal(quotedKey, 'ro[ot.short_key');
+  });
+
+  it('quoteZabbixKey quotes if last item is closing square bracket', () => {
+    const key = 'root.short_key]';
+    const quotedKey = publisherFactory.quoteZabbixKey(key);
+    assert.equal(quotedKey, '"root.short_key]"');
+  });
+
+  it('quoteZabbixKey quotes if exist closing square bracket char in the key', () => {
+    const key = 'root.sho]rt_key';
+    const quotedKey = publisherFactory.quoteZabbixKey(key);
+    assert.equal(quotedKey, '"root.sho]rt_key"');
+  });
+
+  it('quoteZabbixKey quotes if exist comma char', () => {
+    const key = 'root.sho,rt_key';
+    const quotedKey = publisherFactory.quoteZabbixKey(key);
+    assert.equal(quotedKey, '"root.sho,rt_key"');
+  });
+});
+
+describe('zabbix sender utils - wrap metric', () => {
+  const baseState = {
+    keyPrefix: 'statsd.[',
+    keySuffix: ']',
+    discoveryMode: 'none',
+    discoverySegmentsSeparator: '.',
+    discoverySegmentsCount: 5,
+  }
+
+  const metric = {
+    host: 'my-host-01',
+    key: 'root.user_app.business-layer.repository_component.load-time[avg]',
+    value: 1.5,
+  }
+
+  it('quoteZabbixKey does nothing for wrap mode none', () => {
+    const state = Object.assign({}, baseState, { discoveryMode: 'none' });
+    const result = publisherFactory.wrapMetric(metric, state);
+    assert.ok(result);
+    assert.equal(result.host, 'my-host-01');
+    assert.equal(result.key, 'statsd.[root.user_app.business-layer.repository_component.load-time[avg]]');
+    assert.equal(result.value, 1.5);
+  });
+
+  it('quoteZabbixKey escapes key for wrap mode simple', () => {
+    const state = Object.assign({}, baseState, { discoveryMode: 'simple' });
+    const result = publisherFactory.wrapMetric(metric, state);
+    assert.ok(result);
+    assert.equal(result.host, 'my-host-01');
+    assert.equal(result.key, 'statsd.["root.user_app.business-layer.repository_component.load-time[avg]"]');
+    assert.equal(result.value, 1.5);
+  });
+
+  it('quoteZabbixKey escapes key parts for wrap mode simple', () => {
+    const state = Object.assign({}, baseState, { discoveryMode: 'detailed' });
+    const result = publisherFactory.wrapMetric(metric, state);
+    assert.ok(result);
+    assert.equal(result.host, 'my-host-01');
+    assert.equal(result.key, 'statsd.[root,user_app,business-layer,repository_component,"load-time[avg]"]');
+    assert.equal(result.value, 1.5);
+  });
+});
+
+describe('zabbix sender utils - build lld items', () => {
+  const baseState = {
+    discoveryMode: 'none',
+    discoverySegmentsSeparator: '.',
+    discoverySegmentsCount: 5,
+  }
+
+  const metric = {
+    host: 'my-host-01',
+    key: 'root.user_app.business-layer.repository_component.load-time[avg]',
+    value: 1.5,
+  }
+
+  it('buildLldEntry returns null for discovery mode none', () => {
+    const state = Object.assign({}, baseState, { discoveryMode: 'none' });
+    const result = publisherFactory.buildLldEntry(metric, state);
+    assert.equal(result, null);
+  });
+
+  it('buildLldEntry returns simple LLD item for discovery mode simple', () => {
+    const state = Object.assign({}, baseState, { discoveryMode: 'simple' });
+    const result = publisherFactory.buildLldEntry(metric, state);
+    assert.ok(result);
+    assert.equal(result['{#ITEMNAME}'], 'root.user_app.business-layer.repository_component.load-time[avg]');
+  });
+
+  it('buildLldEntry returns simple LLD item for discovery mode simple', () => {
+    const state = Object.assign({}, baseState, { discoveryMode: 'detailed' });
+    const result = publisherFactory.buildLldEntry(metric, state);
+    assert.ok(result);
+    assert.equal(result['{#COMPONENT1}'], 'root');
+    assert.equal(result['{#COMPONENT2}'], 'user_app');
+    assert.equal(result['{#COMPONENT3}'], 'business-layer');
+    assert.equal(result['{#COMPONENT4}'], 'repository_component');
+    assert.equal(result['{#COMPONENT5}'], 'load-time[avg]');
+  });
+});
