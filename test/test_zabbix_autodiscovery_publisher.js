@@ -19,7 +19,7 @@ const config = {
 const pubStatsConfig = Object.assign({}, config, {
   zabbixPublishItems: {
     discoveryStats: { enabled: true },
-    publishStats: { enabled: true },
+    metricsStats: { enabled: true },
   },
 });
 
@@ -263,13 +263,13 @@ describe('zabbix sender utils - wrap metric', () => {
     discoveryMode: 'none',
     discoverySegmentsSeparator: '.',
     discoverySegmentsCount: 5,
-  }
+  };
 
   const metric = {
     host: 'my-host-01',
     key: 'root.user_app.business-layer.repository_component.load-time[avg]',
     value: 1.5,
-  }
+  };
 
   it('quoteZabbixKey does nothing for wrap mode none', () => {
     const state = Object.assign({}, baseState, { discoveryMode: 'none' });
@@ -304,13 +304,13 @@ describe('zabbix sender utils - build lld items', () => {
     discoveryMode: 'none',
     discoverySegmentsSeparator: '.',
     discoverySegmentsCount: 5,
-  }
+  };
 
   const metric = {
     host: 'my-host-01',
     key: 'root.user_app.business-layer.repository_component.load-time[avg]',
     value: 1.5,
-  }
+  };
 
   it('buildLldEntry returns null for discovery mode none', () => {
     const state = Object.assign({}, baseState, { discoveryMode: 'none' });
@@ -334,5 +334,45 @@ describe('zabbix sender utils - build lld items', () => {
     assert.equal(result['{#COMPONENT3}'], 'business-layer');
     assert.equal(result['{#COMPONENT4}'], 'repository_component');
     assert.equal(result['{#COMPONENT5}'], 'load-time[avg]');
+  });
+});
+
+describe('zabbix sender utils - prepend publish stats', () => {
+  const baseState = {
+    reportPublishStats: true,
+    publishItems: {
+      metricsStats: { enabled: true },
+      discoveryStats: { enabled: true },
+    },
+    publishStats: [{
+      metrics: {
+        processed: 10,
+        failed: 1,
+        total: 11,
+        secondsSpent: 0.18,
+      },
+      discovery: {
+        processed: 4,
+        failed: 1,
+        total: 5,
+        secondsSpent: 1.3,
+      },
+    }],
+
+    discoverySegmentsSeparator: '.',
+    discoverySegmentsCount: 5,
+  };
+
+  const baseItems = [{
+    host: 'my-host-01',
+    key: 'root.user_app.business-layer.repository_component.load-time[avg]',
+    value: 1.5,
+  }];
+
+  it('prependPublishStats generates 8 stats items', () => {
+    const state = Object.assign({}, baseState, {});
+    const items = baseItems.slice();
+    publisherFactory.prependPublishStats(items, state);
+    assert.equal(items.length, 9);
   });
 });
