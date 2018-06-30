@@ -164,8 +164,8 @@ describe('zabbix autodiscovery publisher works', () => {
     publisher(items2, batchSender2);
     publisher(items3, batchSender3);
     assert.equal(batchSender1.items.length, 3, 'first time only items + discovery');
-    assert.equal(batchSender2.items.length, 12, 'second time items, discovery and publish stats');
-    assert.equal(batchSender3.items.length, 10, 'third time items and publish stats');
+    assert.equal(batchSender2.items.length, 7, 'second time items, discovery and publish stats');
+    assert.equal(batchSender3.items.length, 6, 'third time items and publish stats');
   });
 });
 
@@ -347,8 +347,8 @@ describe('zabbix sender utils - prepend publish stats', () => {
     publishStats: [{
       metrics: {
         processed: 10,
-        failed: 0,
-        total: 10,
+        failed: 1,
+        total: 11,
         secondsSpent: 0.18,
       },
       discovery: {
