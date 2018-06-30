@@ -370,7 +370,28 @@ describe('zabbix sender utils - prepend publish stats', () => {
   }];
 
   it('prependPublishStats generates 8 stats items', () => {
-    const state = Object.assign({}, baseState, {});
+    const state = JSON.parse(JSON.stringify(baseState));
+    const items = baseItems.slice();
+    publisherFactory.prependPublishStats(items, state);
+    assert.equal(items.length, 9);
+  });
+
+  it('prependPublishStats does not generate items for zero values when no nonzero values before', () => {
+    const state = JSON.parse(JSON.stringify(baseState));
+    state.publishStats[0].metrics.failed = 0;
+    const items = baseItems.slice();
+    publisherFactory.prependPublishStats(items, state);
+    assert.equal(items.length, 8);
+  });
+
+  it('prependPublishStats generates items for zero values when prev values was not zero', () => {
+    const state = JSON.parse(JSON.stringify(baseState));
+    state.publishStats[0].metrics.failed = 0;
+    state.publishStatsPrev = {
+      metrics: {
+        failed: 1,
+      },
+    };
     const items = baseItems.slice();
     publisherFactory.prependPublishStats(items, state);
     assert.equal(items.length, 9);
