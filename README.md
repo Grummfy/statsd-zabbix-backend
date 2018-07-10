@@ -46,8 +46,66 @@ Example StatsD configuration:
 
 - `zabbixHost`: Hostname or IP for Zabbix server [default: localhost]
 - `zabbixPort`: Port for Zabbix server [default: 10051]
+- `zabbixTimeout`: Timeout for sending data to Zabbix
+- `zabbixMaxBatchSize`: Zabbix batch sender limit for maximum batch size
+- `zabbixMaxPublishConcurrency`: Maximum number of parallel batches that can be sent to Zabbix
 - `zabbixSendTimestamps`: Send timestamps to Zabbix, otherwise  [default: false]
 - `zabbixTargetHostname`: Set static hostname, use full stat as key [default: undefined]
+- `zabbixPublisher`: Pluggable metrics filtering and publishing scripts. If not configured, all metrics reported to statsd will be sent to Zabbix without any change.
+- `zabbixPublishItems`: 2-level deep object that configures items categories that need to be sent to zabbix. First level contains entries that keep sets of true/false flags for different items categories. [default: all items enabled]. Example: 
+```js
+zabbixPublishItems: {
+  timers: {
+    enabled: true,
+    send_lower: false,
+    send_upper: false,
+    send_avg: false
+    send_count: false,
+    send_mean_percentile: false,
+    },
+  counters: {
+      enabled: false
+    },
+  guages: {
+      enabled: false
+  },
+}
+```
+There is special zabbix publisher designed specificaly to bring Zabbix LLD (Low Level Discovery) to statsd - `./zabbix-autodiscovery-publisher`. In case if this zabbixPublisher is chosen, then following items become available for configuration:
+- `zabbixDiscoveryKey`: defines zabbix discovery key. This value is used as target metric name to send discovery packages to Zabbix. [default: statsd.discovery]
+- `zabbixDiscoveryMode`: Defines what discovery mode needs to be used by this publisher. [none, simple, detailed, default: simple]
+- `zabbixDiscoverySegmentsCount`: Number of segments in advanced discovery mode. [default: 5]
+- `zabbixDiscoverySegmentsSeparator`: Separator for detailed key splitting. [default: '.']
+- `zabbixItemKeyPrefix`: Prefix to original metric name. This might be necessary for autodiscovery to work properly
+- `zabbixItemKeySuffix`: Postfix to original metric name. This might be necessary for autodiscovery to work properly
+- `zabbixMaxDiscoveryBatchSize`: Defines maximum discovery package size. As metrics discovery is a heavy operation, value for this setting should be choosen carefully.
+- `zabbixPublishItems.metricsStats:`: The parameter define whether this publisher should publish metric sending statistics to zabbix as a separate metric.
+- `zabbixPublishItems.discoveryStats`: The parameter define whether this publisher should publish metric discovery statistics to zabbix as a separate metric.
+
+```js
+{
+...
+
+  zabbixPublisher: './zabbix-autodiscovery-publisher',
+
+  // ========================================
+  // Configure zabbix-autodiscovery-publisher
+  zabbixMaxDiscoveryBatchSize: 4,
+  zabbixDiscoveryKey: 'nodejs2.discovery', //needs to be set in zabbix LLD rule
+  zabbixDiscoveryMode: 'simple',
+  zabbixDiscoverySegmentsCount: 5,
+  zabbixItemKeyPrefix: 'statsd.[',	//needs to prefix original metric name for zabbix items discovered by LLD rule
+  zabbixItemKeySuffix: ']',	//needs to postfix original metric name for zabbix items discovered by LLD rule
+
+  // ========================================
+  // Configure zabbix backend + zabbix-autodiscovery-publisher publishing settings
+  zabbixPublishItems: {
+    discoveryStats: { enabled: true },
+    metricsStats: { enabled: true },
+  },
+...
+}
+```
 
 ## Usage
 
@@ -160,3 +218,30 @@ Logstash sends to Statsd: `logstash.host_example_com.my_key:1|g`
 Zabbix will receive a single item:
 
 - `my.key`
+
+#### LLD
+
+LLD stands for [Zabbix Low Level Discovery](https://www.zabbix.com/documentation/3.4/manual/discovery/low_level_discovery) which is a nice feature of Zabbix that allows it to discover metrics dynamically removing the need of defining them manually through the template. Te idea is simple, when statsd observers a metric for the first time, it sends a special discovery item specifying discovery item key. Zabbix template for that special key parses received discovery item and creates metrics based on discovery item content and template configuration. 
+Discovery item may look like this:
+```js
+{ "data": [ { "{#ITEMNAME}: "test.metric.name" } ] }
+```
+Zabbix Sender command for item discovery looks like this:
+```
+zabbix_sender.exe -z zabbix.dev -s web-01 -k metrics.discovery -o "{ \"data\":[ { \"{#ITEMNAME}\": \"test.metric.name\"} ] }"
+```
+As result of sending this command with configuration described above and proper zabbix template, following metric will be create:
+```
+statsd[test.metric.name]
+```
+
+**Note!** If there are squire bracets in metric name, such metric name should be escaped when the metric is being reported as [Zabbix escapes squire bracets in metric names](https://www.zabbix.com/documentation/3.4/manual/config/items/item/key). Example of such metric name could be:
+```
+statsd["db.request_time[count]"]
+```
+
+Command to send such metric looks like this:
+```
+zabbix_sender.exe -z zabbix.dev -s web-01 -k statsd.[test.metric.name] -o 1.3
+zabbix_sender.exe -z zabbix.dev -s web-01 -k "statsd.[\"db.request_time[count]\"]" -o 1.3
+```
