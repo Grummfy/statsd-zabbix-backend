@@ -7,9 +7,9 @@ const zabbix = require('../lib/zabbix');
 const hostname = require('os').hostname();
 
 const config = {
+  debug: true,
   flushInterval: 1,
 };
-const ee = new events.EventEmitter();
 
 
 describe('decode stat -> {host, key}', () => {
@@ -46,7 +46,7 @@ describe('static host, stat as key', () => {
 
 describe('metrics to items', () => {
   it('counters generate total and avg items', () => {
-    const items = zabbix.itemsForCounter(10000, 'test', 'key', 100);
+    const items = zabbix.itemsForCounter(null, 10000, 'test', 'key', 100);
     assert.equal(items.length, 2);
 
     const [total, avg] = items;
@@ -65,7 +65,7 @@ describe('metrics to items', () => {
       values.push(i);
     }
 
-    const items = zabbix.itemsForTimer(percentiles, 'test', 'key', values);
+    const items = zabbix.itemsForTimer(null, percentiles, 'test', 'key', values);
     assert.equal(items.length, numItems);
 
     const [lower, upper, count, mean95, upper95, mean99, upper99] = items;
@@ -86,7 +86,7 @@ describe('metrics to items', () => {
   });
 
   it('gauges generate a single item with current value', () => {
-    const items = zabbix.itemsForGauge('test', 'key', 100);
+    const items = zabbix.itemsForGauge(null, 'test', 'key', 100);
     assert.equal(items.length, 1);
 
     const [item] = items;
@@ -98,13 +98,15 @@ describe('metrics to items', () => {
 // TODO: improve tests
 describe('plugin works', () => {
   it('can run init', () => {
-    zabbix.init(0, config, ee, logger);
+    const emitter = new events.EventEmitter();
+    zabbix.init(0, config, emitter, logger);
   });
 
   it('can flush stats', () => {
     logger.log = sinon.spy();
-    zabbix.init(0, config, ee, logger);
-    ee.emit('flush', 0, {
+    const emitter = new events.EventEmitter();
+    zabbix.init(0, config, emitter, logger);
+    emitter.emit('flush', 0, {
       counters: {},
       timers: {},
       gauges: {},
@@ -116,8 +118,9 @@ describe('plugin works', () => {
 
   it('can write status', () => {
     const spy = sinon.spy();
-    zabbix.init(0, config, ee, logger);
-    ee.emit('status', spy);
+    const emitter = new events.EventEmitter();
+    zabbix.init(0, config, emitter, logger);
+    emitter.emit('status', spy);
     sinon.assert.called(spy);
   });
 });
